@@ -2,7 +2,7 @@
 
 Vehicle routing & dispatch simulator: FastAPI + NetworkX + SciPy backend
 (`/backend`), React + Vite + Tailwind frontend (`/frontend`). Real OSMnx street
-network for Bandra, Mumbai; 50 vans across 5 depots.
+network for Bandra, Mumbai; 100 vans across 7 depots.
 
 ## Required reading
 
