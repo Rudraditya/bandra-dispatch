@@ -1,0 +1,205 @@
+<title>300-Order Stress Test Report</title>
+<style>
+.report-root {
+  --surface-0: #05070d;
+  --surface-1: #0f1420;
+  --surface-2: #151b2b;
+  --border: rgba(255,255,255,0.08);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --series-blue: #3987e5;
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--surface-0);
+  color: var(--text-primary);
+  padding: 32px clamp(16px, 5vw, 48px) 64px;
+  max-width: 980px;
+  margin: 0 auto;
+}
+.report-root h1 { font-size: 22px; font-weight: 700; margin: 0 0 4px; letter-spacing: -0.01em; }
+.report-root .subtitle { color: var(--text-secondary); font-size: 13px; margin: 0 0 28px; }
+.report-root h2 { font-size: 15px; font-weight: 600; margin: 40px 0 12px; color: var(--text-primary); }
+.report-root p { line-height: 1.6; color: var(--text-secondary); font-size: 13.5px; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 8px; }
+.stat-tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.stat-tile .label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 600; }
+.stat-tile .value { font-size: 20px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.stat-tile .value.accent-good { color: var(--status-good); }
+.stat-tile .value.accent-critical { color: var(--status-critical); }
+.stat-tile .value.accent-blue { color: var(--series-blue); }
+.chart-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px 12px; margin-bottom: 20px; overflow-x: auto; }
+.chart-card .chart-title { font-size: 12.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px; }
+.chart-card .chart-sub { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; }
+.legend { display: flex; gap: 16px; font-size: 11px; color: var(--text-secondary); margin: 6px 0 4px; flex-wrap: wrap; }
+.legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.verdict-list { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.verdict-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--text-secondary); line-height: 1.55; }
+.verdict-list .tag { flex-shrink: 0; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.03em; margin-top: 2px; }
+.tag.pass { background: rgba(12,163,12,0.15); color: #4ade80; }
+.tag.expected { background: rgba(250,178,25,0.15); color: #fbbf24; }
+.tag.note { background: rgba(148,163,184,0.15); color: #cbd5e1; }
+table.data-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+table.data-table th, table.data-table td { text-align: right; padding: 5px 10px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+table.data-table th:first-child, table.data-table td:first-child { text-align: left; }
+table.data-table th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.03em; }
+table.data-table td { color: var(--text-secondary); }
+.footer-note { font-size: 11.5px; color: var(--text-muted); margin-top: 32px; border-top: 1px solid var(--border); padding-top: 16px; }
+</style>
+
+<div class="report-root">
+  <h1>300-Order Stress Test — Incident &amp; Performance Report</h1>
+  <p class="subtitle">Bandra Dispatch Simulator · Run terminated by manual reset at tick 1285 (~21.4 min elapsed) · 198 of 300 orders delivered</p>
+
+  <div class="stat-grid">
+    <div class="stat-tile"><div class="label">Deliveries Completed</div><div class="value">198 / 300</div></div>
+    <div class="stat-tile"><div class="label">Final SLA (10 min)</div><div class="value accent-critical">67.2%</div></div>
+    <div class="stat-tile"><div class="label">Peak Backlog</div><div class="value">297</div></div>
+    <div class="stat-tile"><div class="label">Total Cost of Operation</div><div class="value accent-blue">₹64,223</div></div>
+    <div class="stat-tile"><div class="label">Tick-Loop Errors</div><div class="value accent-good">0</div></div>
+    <div class="stat-tile"><div class="label">Run Duration</div><div class="value">21.4 min</div></div>
+  </div>
+
+  <h2>SLA over time</h2>
+  <div class="chart-card">
+    <div class="chart-title">% of completed deliveries within the 10-minute SLA window</div>
+    <div class="chart-sub">Sampled every ~60s from tick 67 to tick 1285</div>
+    <div id="sla-chart"></div>
+    <div class="legend">
+      <span><span class="swatch" style="background:#3987e5"></span>SLA %</span>
+      <span><span class="swatch" style="background:rgba(12,163,12,0.35)"></span>On target (≥95%)</span>
+      <span><span class="swatch" style="background:rgba(250,178,25,0.3)"></span>At risk (80–95%)</span>
+      <span><span class="swatch" style="background:rgba(236,131,90,0.3)"></span>Slipping (60–80%)</span>
+    </div>
+  </div>
+
+  <h2>Backlog over time</h2>
+  <div class="chart-card">
+    <div class="chart-title">Orders not yet delivered (pending + assigned + still queued to be created)</div>
+    <div class="chart-sub">Peaked at 297 near the start, only partially drained before the run was terminated</div>
+    <div id="backlog-chart"></div>
+    <div class="legend"><span><span class="swatch" style="background:#3987e5"></span>Backlog remaining</span></div>
+  </div>
+
+  <h2>Findings</h2>
+  <ul class="verdict-list">
+    <li><span class="tag pass">Pass</span> The one-way-street return-trip crash (fixed earlier this session) did not recur. Tick count climbed steadily for the entire 1285-tick run with <strong>zero</strong> "Simulation tick failed" log entries, including through a stretch this exact bug class would previously have killed the loop.</li>
+    <li><span class="tag pass">Pass</span> Depot load stayed balanced under sustained load — no single depot dominated or starved, consistent with the rebalanced placement verified earlier.</li>
+    <li><span class="tag expected">Expected, not a bug</span> SLA held at 100% for the first ~12 minutes, then declined steadily to 67.2% by tick 1285. Root cause: 300 orders injected at 1/sec (5 min) against a ~12–13 delivery/min sustainable fleet throughput is a genuine arrival-rate overload (~5x capacity). Orders stuck in backlog accrue wait time against their SLA clock before their van even starts driving.</li>
+    <li><span class="tag note">Note</span> The run did not reach 300/300 — it was manually reset at 198/300. Based on the drain rate at termination (~106 orders remaining, throughput trending down as depots cycled through restock), full drain would likely have taken another 10–15+ minutes and the final SLA would likely have settled lower than 67.2% before recovering as the backlog cleared.</li>
+  </ul>
+
+  <h2>Checkpoint data</h2>
+  <div class="chart-card">
+    <table class="data-table">
+      <thead><tr><th>Tick</th><th>Completed</th><th>Pending</th><th>Backlog</th><th>SLA %</th><th>Total Cost (₹)</th></tr></thead>
+      <tbody id="data-table-body"></tbody>
+    </table>
+  </div>
+
+  <p class="footer-note">
+    Generated from live metrics samples captured during the run. See <code>SIMULATION_LOGIC.md</code>
+    §9–10 for the SLA/backlog methodology and the queueing-capacity math behind this result.
+  </p>
+</div>
+
+<script>
+const data = [
+  {tick: 67,   completed: 3,   pending: 17,  backlog: 297, sla: 100.0, cost: 33560.76},
+  {tick: 97,   completed: 4,   pending: 45,  backlog: 296, sla: 100.0, cost: 33615.59},
+  {tick: 126,  completed: 6,   pending: 72,  backlog: 294, sla: 100.0, cost: 33689.02},
+  {tick: 155,  completed: 10,  pending: 101, backlog: 290, sla: 100.0, cost: 33936.54},
+  {tick: 185,  completed: 15,  pending: 130, backlog: 285, sla: 100.0, cost: 34353.49},
+  {tick: 214,  completed: 20,  pending: 158, backlog: 280, sla: 100.0, cost: 34767.79},
+  {tick: 537,  completed: 96,  pending: 171, backlog: 204, sla: 100.0, cost: 45428.89},
+  {tick: 568,  completed: 100, pending: 170, backlog: 200, sla: 100.0, cost: 45813.21},
+  {tick: 628,  completed: 113, pending: 160, backlog: 187, sla: 100.0, cost: 47310.90},
+  {tick: 687,  completed: 119, pending: 145, backlog: 181, sla: 100.0, cost: 49452.68},
+  {tick: 747,  completed: 128, pending: 128, backlog: 172, sla: 98.4,  cost: 51356.23},
+  {tick: 807,  completed: 134, pending: 123, backlog: 166, sla: 97.8,  cost: 52369.64},
+  {tick: 867,  completed: 145, pending: 117, backlog: 155, sla: 91.7,  cost: 53750.18},
+  {tick: 926,  completed: 156, pending: 120, backlog: 144, sla: 85.3,  cost: 55123.74},
+  {tick: 986,  completed: 165, pending: 113, backlog: 135, sla: 80.6,  cost: 56671.08},
+  {tick: 1046, completed: 174, pending: 104, backlog: 126, sla: 76.4,  cost: 58425.43},
+  {tick: 1106, completed: 178, pending: 94,  backlog: 122, sla: 74.7,  cost: 60020.08},
+  {tick: 1166, completed: 184, pending: 86,  backlog: 116, sla: 72.3,  cost: 61213.96},
+  {tick: 1225, completed: 189, pending: 76,  backlog: 111, sla: 70.4,  cost: 62774.43},
+  {tick: 1285, completed: 198, pending: 72,  backlog: 102, sla: 67.2,  cost: 64223.11},
+];
+
+const tbody = document.getElementById('data-table-body');
+for (const d of data) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${d.tick}</td><td>${d.completed}</td><td>${d.pending}</td><td>${d.backlog}</td><td>${d.sla.toFixed(1)}</td><td>${d.cost.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>`;
+  tbody.appendChild(tr);
+}
+
+function lineChart(containerId, series, opts) {
+  const w = 900, h = 220, padL = 40, padR = 16, padT = 10, padB = 26;
+  const xs = series.map(d => d.x);
+  const ys = series.map(d => d.y);
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const yMin = opts.yMin ?? Math.min(...ys);
+  const yMax = opts.yMax ?? Math.max(...ys);
+  const sx = x => padL + ((x - xMin) / (xMax - xMin)) * (w - padL - padR);
+  const sy = y => h - padB - ((y - yMin) / (yMax - yMin)) * (h - padT - padB);
+
+  let svg = `<svg viewBox="0 0 ${w} ${h}" width="100%" style="max-width:${w}px" role="img" aria-label="${opts.ariaLabel}">`;
+
+  if (opts.bands) {
+    for (const b of opts.bands) {
+      const y1 = sy(Math.min(b.from, yMax));
+      const y2 = sy(Math.max(b.to, yMin));
+      svg += `<rect x="${padL}" y="${Math.min(y1,y2)}" width="${w-padL-padR}" height="${Math.abs(y2-y1)}" fill="${b.color}" opacity="0.14" />`;
+    }
+  }
+
+  // gridlines + y labels
+  const ticks = opts.yTicks || 4;
+  for (let i = 0; i <= ticks; i++) {
+    const yVal = yMin + (i / ticks) * (yMax - yMin);
+    const yPos = sy(yVal);
+    svg += `<line x1="${padL}" y1="${yPos}" x2="${w-padR}" y2="${yPos}" stroke="#2c2c2a" stroke-width="1" />`;
+    svg += `<text x="${padL - 8}" y="${yPos + 3}" text-anchor="end" font-size="9.5" fill="#64748b">${opts.yFormat ? opts.yFormat(yVal) : Math.round(yVal)}</text>`;
+  }
+
+  // x labels (tick numbers), sparse
+  const xLabelEvery = Math.ceil(series.length / 6);
+  series.forEach((d, i) => {
+    if (i % xLabelEvery === 0 || i === series.length - 1) {
+      svg += `<text x="${sx(d.x)}" y="${h - 8}" text-anchor="middle" font-size="9.5" fill="#64748b">${d.x}</text>`;
+    }
+  });
+
+  const pathD = series.map((d, i) => `${i === 0 ? 'M' : 'L'} ${sx(d.x)} ${sy(d.y)}`).join(' ');
+  svg += `<path d="${pathD}" fill="none" stroke="${opts.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`;
+
+  for (const d of series) {
+    svg += `<circle cx="${sx(d.x)}" cy="${sy(d.y)}" r="2.5" fill="${opts.color}"><title>tick ${d.x}: ${d.y}</title></circle>`;
+  }
+
+  svg += `</svg>`;
+  document.getElementById(containerId).innerHTML = svg;
+}
+
+lineChart('sla-chart', data.map(d => ({x: d.tick, y: d.sla})), {
+  color: '#3987e5',
+  yMin: 60, yMax: 100, yTicks: 4,
+  yFormat: v => Math.round(v) + '%',
+  ariaLabel: 'SLA percentage over time, declining from 100% to 67.2%',
+  bands: [
+    {from: 95, to: 100, color: '#0ca30c'},
+    {from: 80, to: 95, color: '#fab219'},
+    {from: 60, to: 80, color: '#ec835a'},
+  ],
+});
+
+lineChart('backlog-chart', data.map(d => ({x: d.tick, y: d.backlog})), {
+  color: '#3987e5',
+  yMin: 0, yMax: 300, yTicks: 5,
+  ariaLabel: 'Backlog remaining over time, peaking near 300 and partially draining to 102',
+});
+</script>

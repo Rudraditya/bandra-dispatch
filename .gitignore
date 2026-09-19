@@ -1,0 +1,25 @@
+# Python
+backend/venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# osmnx HTTP cache (regenerated on demand; the built graph in backend/data is kept)
+backend/cache/
+
+# Node
+node_modules/
+dist/
+
+# Local tooling / machine-specific
+.claude/settings.local.json
+.env
+.env.*
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
