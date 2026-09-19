@@ -22,7 +22,7 @@ A real-time **vehicle routing & dispatch simulator** for a delivery fleet operat
 2. Assign nodes with a **regret-based capacitated greedy** (nodes with the strongest single preference claim their depot first) so no depot exceeds its share.
 3. Refine with **Lloyd's iteration**: re-centre each depot on its own partition, then re-balance.
 
-Measured on the real network with 7 depots: re-centring cut the **average node-to-depot travel time from 189.8 s to 87.5 s** (max 640 s → 305 s) and removed a depot that had been stranded with 13 of 1,086 nodes.
+Measured on the real network with 7 depots: re-centring cut the **average node-to-depot travel time from 189.8 s to 82.5 s** (max 640 s → 325 s) and removed a depot that had been stranded with 13 of 1,086 nodes. Node splits per depot went from `[179, 179, 179, 179, 179, 13, 178]` to `[97, 179, 170, 135, 179, 172, 154]` (figures cover the nodes reachable from their assigned depot; see `SIMULATION_LOGIC.md` §4 for the full comparison and known limitations).
 
 **Decomposed multi-depot VRP.** Rather than one global assignment, orders are partitioned by home depot and each depot runs one Dijkstra plus one Hungarian solve per tick — 7 shortest-path searches per tick instead of up to 100 (one per idle van).
 

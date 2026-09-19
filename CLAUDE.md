@@ -28,8 +28,10 @@ What "update" means concretely:
 - New endpoint or WebSocket payload field → add it to the API section.
 - New algorithm or changed assignment logic → describe the approach and any
   measured before/after result (this repo's history shows real numbers matter —
-  e.g. the depot node split went from `[426, 20, 133, 120, 387]` to `[250, 250,
-  196, 183, 207]` after a fix, and that's the kind of concrete evidence worth
+  e.g. back at 5 depots the node split went from `[426, 20, 133, 120, 387]` to
+  `[250, 250, 196, 183, 207]` after a fix — those arrays are 5 long because the
+  fleet had 5 depots then; the current 7-depot equivalents are in
+  `SIMULATION_LOGIC.md` §4 — and that's the kind of concrete evidence worth
   keeping).
 - New bug found and fixed → add it to "Operational gotchas" so it isn't
   silently reintroduced or re-debugged from scratch later.

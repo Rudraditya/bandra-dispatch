@@ -26,9 +26,14 @@ Claude) touches this repo. See the update rule at the bottom.
   old figures are likely stale in the *optimistic* direction (new setup should
   handle more load), but that's a prediction, not something to build on
   unverified.
-- No other in-progress work or known bugs at close of session — the last
-  verified state was a clean 100-order smoke test showing balanced dispatch
-  across all 7 depots with no errors.
+- No other in-progress work at close of that session — the last verified state
+  was a clean 100-order smoke test showing balanced dispatch across all 7 depots
+  with no errors. **Update 2026-09-19:** re-verifying §4's numbers turned up two
+  unfixed bugs (5 nodes unreachable from every depot → orders there are never
+  dispatched; depot assignment one re-centering round stale). See §11, "Open
+  issues" — a 100-order smoke test has only about a 37% chance of landing even
+  one order on the unreachable nodes (1 − (1 − 5/1086)^100), and a single stuck
+  order is easy to miss among 100.
 
 ---
 
@@ -110,17 +115,42 @@ the balancing step each solve a different problem, and neither alone was enough:
    "near a lot of streets." Re-centering pulls a stranded depot toward wherever
    its (even if currently tiny) partition actually is, and it grows from there.
 
-**Measured results** (both from real runs, not estimates):
-- 5-depot node split: **[250, 250, 196, 183, 207]**, vs. **[426, 20, 133, 120,
-  387]** with plain nearest-depot argmin on the same 5 depot points (fixed by
-  step 2 alone, before the fleet was scaled to 7 depots).
-- 7-depot node split **before** re-centering (step 3): **[179, 179, 179, 179,
-  179, 13, 178]** — one depot stranded at 13/1086 nodes, reproducing the
-  original imbalance problem one depot at a time. **After** 4 rounds of
-  re-centering: **[97, 179, 170, 135, 179, 172, 154]** — no more near-zero
-  outlier, and **average travel time from a node to its assigned depot dropped
-  from 189.8s to 87.5s** (more than 2x), with max dropping from 640s to 305s.
-  This is the concrete "optimize delivery time" result from re-centering.
+**Measured results** (real runs of the `state.py` code paths, not estimates):
+
+- **5-depot era — historical, not the current layout.** Those arrays have 5
+  elements because the fleet had 5 depots then: node split **[250, 250, 196,
+  183, 207]**, vs. **[426, 20, 133, 120, 387]** with plain nearest-depot argmin
+  on the same 5 depot points (fixed by step 2 alone, before the fleet was
+  scaled to 7 depots). It is not re-measurable on the current code without
+  reverting `NUM_DEPOTS`; the 7-depot equivalent is the table below.
+- **Current 7-depot layout, 1,086 nodes, re-measured 2026-09-19.** Balance cap
+  = `ceil(1086 / 7 * 1.15)` = 179 nodes per depot. Avg/max are free-flow
+  depot→node travel time in seconds, computed against the depot positions each
+  variant actually uses. "Unreachable" = nodes with no directed path from their
+  assigned depot; they are excluded from avg/max (they'd be `inf`).
+
+  | Variant | Node split per depot | Unreachable | Avg | Max |
+  |---|---|---|---|---|
+  | (a) plain nearest-depot, seed points | [279, 271, 176, 98, 188, 13, 61] | 0 | 136.1 s | 271.1 s |
+  | (b) balanced only, seed points (no step 3) | [179, 179, 179, 179, 179, 13, 178] | 0 | 189.8 s | 640.4 s |
+  | (c) balanced + 4 re-centering rounds — **production** | [97, 179, 170, 135, 179, 172, 154] | 5 | 82.5 s | 325.0 s |
+  | (d) plain nearest-depot at the final depot points | [94, 199, 147, 119, 220, 178, 129] | 5 | 77.2 s | 325.0 s |
+
+  - (b) is the "before re-centering" result: one depot stranded at 13/1086
+    nodes, reproducing the original imbalance problem one depot at a time.
+  - (c) vs (b): re-centering removes the stranded depot and cuts **average
+    travel time to the assigned depot from 189.8 s to 82.5 s** (2.3x), max from
+    640.4 s to 325.0 s. This is the concrete "optimize delivery time" result
+    from re-centering.
+  - (d) shows what the balancing constraint costs: without it two depots blow
+    past the 179-node cap (199 and 220) in exchange for ~5 s less average
+    travel time (77.2 s vs 82.5 s).
+  - **Correction to the previously recorded figure.** This section used to say
+    "189.8 s → 87.5 s, max 640 s → 305 s". That was avg/max over the reachable
+    nodes only, measured against the depot positions from *before* the final
+    re-centering (see §11, "Open issues"), so it did not match the depots as
+    they are actually placed. Against the final positions it is 82.5 s / 325.0 s.
+    The 7-element splits in (b) and (c) were reproduced exactly.
 
 `nearest_depot_index(node)` is a static lookup into the final precomputed
 assignment, not a live computation — cheap and stable per node for the life of
@@ -341,6 +371,41 @@ number across depots: currently **₹9,500** for a 15-van depot, **₹8,940** fo
   that). If the map ever shows "API KEY REQUIRED" again, it's this same CARTO
   deprecation, not a regression in this repo — swap providers again rather
   than debugging the app code.
+
+### Open issues (found 2026-09-19 while re-verifying §4's numbers; **not fixed**)
+
+Both were found by running the real code, not by reading it, and neither is
+fixed yet. Fix them together and re-measure §4's table afterwards — changing
+the assignment can change which nodes end up unreachable.
+
+1. **5 of 1,086 nodes are unreachable from every depot, so orders placed there
+   are never dispatched.** The street graph is *not* strongly connected
+   (`nx.is_strongly_connected(graph)` is `False`; one-way streets leave
+   directed sinks). The seed layout reached all 1,086 nodes, but after
+   re-centering (§4 step 3) no depot has a directed path to these 5: OSM node
+   ids `245664547`, `245668275`, `346604267`, `1936355432`, `10082236370`.
+   Dispatch gives unreachable pairs the `1e9` sentinel and drops them (§6), so
+   such an order just sits in `pending`. **Confirmed live:** an order dropped at
+   `245664547` (19.05068, 72.83700) was still `pending` after 32 s while a
+   control order created at the same moment was `assigned` within 8 s, with
+   plenty of idle vans. Exposure: random mock/bulk orders pick uniformly from
+   all graph nodes (`random.choice(list(state.graph.nodes))`), so ~0.46% of them
+   (5/1086) hit this; interactive drop-mode clicks near those spots can too.
+   A stuck order inflates `backlog_remaining`, never completes, and drags
+   `sla_pct` down for the rest of the run. Candidate fixes (unverified): restrict
+   the graph to its largest strongly connected component in `load_graph()`, or
+   only generate/accept orders on nodes reachable from their home depot.
+2. **The stored depot assignment is one Lloyd round stale.** `_init_depots`
+   re-centers the depots (M-step) *after* the last balanced assignment (E-step)
+   and never re-runs the E-step, so `_node_depot_assignment` — what
+   `nearest_depot_index` routes orders by — describes the depot positions from
+   *before* the final move, not where the depots actually sit. Recomputing the
+   balanced assignment at the final depot positions changes the home depot of
+   **134 of 1,086 nodes**. (§4 step 3's "then step 2 re-runs against the new
+   locations" is therefore true for rounds 1–3 but not after the last round.)
+   `_depot_free_flow_dist` is affected the same way and is written once
+   (`state.py:185`) but not read anywhere else in `app/`, so it's currently a
+   dead attribute. Candidate fix: one more E-step after the loop.
 
 ---
 
